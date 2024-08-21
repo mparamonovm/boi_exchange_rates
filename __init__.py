@@ -14,12 +14,12 @@ DOMAIN = "boi_exchange_rates"
 
 PLATFORMS = ["sensor"]
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Bank of Israel Exchange Rates component."""
     hass.data[DOMAIN] = {}
     return True
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Bank of Israel Exchange Rates from a config entry."""
     currencies = entry.options.get("currencies", [])
     hass.data[DOMAIN] = {"currencies": currencies}
@@ -33,7 +33,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         update_interval=timedelta(hours=3),
     )
 
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except UpdateFailed as err:
+        _LOGGER.error("Error refreshing exchange rates: %s", err)
+        return False
 
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
@@ -48,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     return True
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = all(
         await asyncio.gather(
@@ -63,6 +67,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     return unload_ok
 
-async def update_listener(hass, entry):
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
     """Handle options update."""
     await hass.config_entries.async_reload(entry.entry_id)
